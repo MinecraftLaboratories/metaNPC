@@ -1,9 +1,5 @@
 package com.nikita23830.metanpc.common;
 
-import com.nikita23830.metanpc.MetaNPC;
-import com.nikita23830.metanpc.common.packets.PacketBuy;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -13,16 +9,20 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.StatCollector;
 import noppes.npcs.Server;
 import noppes.npcs.constants.EnumPacketClient;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.RoleInterface;
 import su.metalabs.lib.handlers.currency.CurrencyHandler;
 import su.metalabs.lib.handlers.data.ClientDataHandler;
-import su.metalabs.lib.handlers.data.ClientDataUtils;
 import su.metalabs.lib.handlers.injection.BalanceHandler;
+import su.metalabs.lib.handlers.injection.SkillsHandler;
 import su.metalabs.lib.utils.InventoryUtils;
+import su.metalabs.npc.MetaNpc;
+import su.metalabs.npc.common.IContentSlot;
+import su.metalabs.npc.common.ItemSystem;
+import su.metalabs.npc.common.packets.BuyPacket;
+import su.metalabs.npc.proxy.CommonProxy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,13 +77,13 @@ public class RoleAdvanceTrader extends RoleInterface {
     public void interact(EntityPlayer entityPlayer) {
         if (entityPlayer.worldObj.isRemote)
             return;
-        entityPlayer.openGui(MetaNPC.instance, 0, entityPlayer.worldObj, MathHelper.floor_double(npc.posX), MathHelper.floor_double(npc.posY), MathHelper.floor_double(npc.posZ));
+        entityPlayer.openGui(MetaNpc.instance, 0, entityPlayer.worldObj, MathHelper.floor_double(npc.posX), MathHelper.floor_double(npc.posY), MathHelper.floor_double(npc.posZ));
         Server.sendData((EntityPlayerMP) entityPlayer, EnumPacketClient.GUI_DATA, npc.roleInterface.writeToNBT(new NBTTagCompound()));
     }
 
     public void onTryBuy(int slot, EntityPlayer player) {
         if (player.worldObj.isRemote) {
-            NetworkHandler.INSTANCE.sendToServer(new PacketBuy(slot, this.npc.posX, this.npc.posY, this.npc.posZ));
+            new BuyPacket(slot, this.npc.posX, this.npc.posY, this.npc.posZ).sendToServer();
             return;
         }
         if (slot >= 0 && slot < 24) {
@@ -106,6 +106,10 @@ public class RoleAdvanceTrader extends RoleInterface {
                 if (slot1.getSlotOut(i) != null)
                     slot1.getSlotOut(i).execute(player, this);
             }
+
+            if(slot1.getSlotXp() != null) {
+                slot1.getSlotXp().execute(player, this);
+            }
         }
     }
 
@@ -119,6 +123,8 @@ public class RoleAdvanceTrader extends RoleInterface {
     public static class TradeSlot {
         private TradeSlotIn[] slotIn = new TradeSlotIn[2];
         private TradeSlotOut[] slotOut = new TradeSlotOut[2];
+
+        private TradeSlotXp slotXp = new TradeSlotXp();
 
         public TradeSlot() {}
 
@@ -136,6 +142,12 @@ public class RoleAdvanceTrader extends RoleInterface {
                     listOut.appendTag(out.writeNBT());
             }
             n.setTag("out", listOut);
+
+            NBTTagList listXp = new NBTTagList();
+            if (slotXp != null)
+                listXp.appendTag(slotXp.writeNBT());
+            n.setTag("xp", listXp);
+
             return n;
         }
 
@@ -145,6 +157,7 @@ public class RoleAdvanceTrader extends RoleInterface {
             slotIn[1] = null;
             slotOut[0] = null;
             slotOut[1] = null;
+            slotXp = null;
             for (int i = 0; i < list.tagCount(); ++i) {
                 if (slotIn[i] == null)
                     slotIn[i] = new TradeSlotIn();
@@ -155,6 +168,13 @@ public class RoleAdvanceTrader extends RoleInterface {
                 if (slotOut[i] == null)
                     slotOut[i] = new TradeSlotOut();
                 slotOut[i].readNBT(list.getCompoundTagAt(i));
+            }
+
+            list = n.hasKey("xp") ? n.getTagList("xp", 10) : new NBTTagList();
+            for (int i = 0; i < list.tagCount(); ++i) {
+                if (slotXp == null)
+                    slotXp = new TradeSlotXp();
+                slotXp.readNBT(list.getCompoundTagAt(0));
             }
         }
 
@@ -185,6 +205,14 @@ public class RoleAdvanceTrader extends RoleInterface {
             this.slotOut[slot] = out;
         }
 
+        public void setSlotXp(TradeSlotXp xp) {
+            this.slotXp = xp;
+        }
+
+        public TradeSlotXp getSlotXp() {
+            return slotXp;
+        }
+
         public TradeSlotIn getSlotIn(int slot) {
             return this.slotIn[slot];
         }
@@ -206,20 +234,99 @@ public class RoleAdvanceTrader extends RoleInterface {
                 strings.add(getSlotOut(0).genTooltip());
             if (getSlotOut(1) != null)
                 strings.add(getSlotOut(1).genTooltip());
+            if (getSlotXp() != null && getSlotXp().getXpAmount() != 0) {
+                strings.add("§7- §aОпыт торговли §7" + getSlotXp().getXpAmount() + " ед.");
+            }
             strings.add("");
             if (can == CanTradeEnum.YES)
                 strings.add("§9Кликни для покупки");
             else {
                 strings.add("§cНе хватает ресурсов");
-                strings.add("§7- " + can.message);
             }
             return strings;
         }
     }
 
-    public static class TradeSlotIn {
+    public static class TradeSlotXp implements IContentSlot {
+        public Object data;
+
+        @Override
+        public TradeType getType() {
+            return TradeType.XP;
+        }
+
+        public Object getData() {
+            return data;
+        }
+
+        public TradeSlotXp() {}
+
+        public TradeSlotXp(Object[] data) {
+            try {
+                this.data = data[1];
+                return;
+            } catch (Exception ignored) {
+
+            }
+
+            this.data = new ItemStack(Blocks.stone);
+
+        }
+
+        public ItemStack getStackToGM() {
+            return (ItemStack) this.data;
+        }
+
+        public int getXpAmount() {
+            if(data instanceof ItemStack) {
+                ItemStack is = (ItemStack) data;
+                return is.stackSize;
+            }
+
+            return 0;
+        }
+
+        public NBTTagCompound writeNBT() {
+            NBTTagCompound nbt = new NBTTagCompound();
+            if(data != null) {
+                NBTTagCompound n = new NBTTagCompound();
+                ((ItemStack) data).writeToNBT(n);
+                nbt.setTag("STACK", n);
+            }
+            return nbt;
+        }
+
+        public void readNBT(NBTTagCompound nbt) {
+            NBTTagCompound n = nbt.getCompoundTag("STACK");
+            this.data = ItemStack.loadItemStackFromNBT(n);
+        }
+
+
+        public boolean execute(EntityPlayer player, RoleAdvanceTrader role) {
+            return SkillsHandler.giveSkillXp(player.getCommandSenderName(), "trading", getXpAmount(), false);
+        }
+
+        private boolean equalsNBT(ItemStack a, ItemStack b) {
+            if (!a.hasTagCompound() && !b.hasTagCompound())
+                return true;
+            if (a.hasTagCompound() && a.getTagCompound().hasNoTags() && !b.hasTagCompound())
+                return true;
+            if (b.hasTagCompound() && b.getTagCompound().hasNoTags() && !a.hasTagCompound())
+                return true;
+            if (a.hasTagCompound() && b.hasTagCompound() && a.equals(b))
+                return true;
+            return false;
+        }
+    }
+
+
+    public static class TradeSlotIn implements IContentSlot {
         private TradeType type;
         public Object data;
+
+        public Object getData() {
+            return data;
+        }
 
         public TradeSlotIn() {}
 
@@ -241,7 +348,7 @@ public class RoleAdvanceTrader extends RoleInterface {
         }
 
         public void calculated() {
-            if (data != null && data instanceof ItemStack && ((ItemStack)data).getItem() == MetaNPC.itemSystem) {
+            if (data != null && data instanceof ItemStack && ((ItemStack)data).getItem() == CommonProxy.itemSystem) {
                 ItemStack t = (ItemStack) data;
                 if (ItemSystem.getRub(t) != -1) {
                     type = TradeType.RUB;
@@ -270,7 +377,7 @@ public class RoleAdvanceTrader extends RoleInterface {
                 case GEMS:
                 case RUB:
                 case COINS:
-                    ItemStack st = new ItemStack(MetaNPC.itemSystem);
+                    ItemStack st = new ItemStack(CommonProxy.itemSystem);
                     st.setItemDamage(type == TradeType.RUB ? 0 : type == TradeType.GEMS ? 1 : 2);
                     st.setStackDisplayName(Integer.toString((int) data));
                     return st;
@@ -324,11 +431,11 @@ public class RoleAdvanceTrader extends RoleInterface {
                 case STACK:
                     return "§7- §f" + ((ItemStack)data).getDisplayName() + " §7" + ((ItemStack)data).stackSize + "§7шт.";
                 case COINS:
-                    return "§7- §6" + CurrencyHandler.getGoldCurrency().getCurrencyName() + " §7x" + (int) data;
-                case RUB:
-                    return "§7- §6" + CurrencyHandler.getRubCurrency().getCurrencyName() + " §7x" + (int) data;
+                    return "§7- §" + CurrencyHandler.getGoldCurrency().getCurrencyDisplayColor() + CurrencyHandler.getGoldCurrency().getCurrencyName() + " §7" + data + " шт.";
                 case GEMS:
-                    return "§7- §6" + CurrencyHandler.getGemCurrency().getCurrencyName() + " §7x" + (int) data;
+                    return "§7- §" + CurrencyHandler.getGemCurrency().getCurrencyDisplayColor() + CurrencyHandler.getGemCurrency().getCurrencyName() + " §7" + data + " шт.";
+                case RUB:
+                    return "§7- §" + CurrencyHandler.getRubCurrency().getCurrencyDisplayColor() + CurrencyHandler.getRubCurrency().getCurrencyName() + " §7" + data + " шт.";
             }
             return "";
         }
@@ -397,7 +504,7 @@ public class RoleAdvanceTrader extends RoleInterface {
         }
     }
 
-    public static class TradeSlotOut {
+    public static class TradeSlotOut implements IContentSlot {
         private TradeType type;
         public Object data;
 
@@ -420,8 +527,12 @@ public class RoleAdvanceTrader extends RoleInterface {
             }
         }
 
+        public Object getData() {
+            return data;
+        }
+
         public void calculated() {
-            if (data != null && data instanceof ItemStack && ((ItemStack)data).getItem() == MetaNPC.itemSystem) {
+            if (data != null && data instanceof ItemStack && ((ItemStack)data).getItem() == CommonProxy.itemSystem) {
                 ItemStack t = (ItemStack) data;
                 if (ItemSystem.getRub(t) != -1) {
                     type = TradeType.RUB;
@@ -450,7 +561,7 @@ public class RoleAdvanceTrader extends RoleInterface {
                 case GEMS:
                 case RUB:
                 case COINS:
-                    ItemStack st = new ItemStack(MetaNPC.itemSystem);
+                    ItemStack st = new ItemStack(CommonProxy.itemSystem);
                     st.setItemDamage(type == TradeType.RUB ? 0 : type == TradeType.GEMS ? 1 : 2);
                     st.setStackDisplayName(Integer.toString((int) data));
                     return st;
@@ -504,11 +615,11 @@ public class RoleAdvanceTrader extends RoleInterface {
                 case STACK:
                     return "§7- §f" + ((ItemStack)data).getDisplayName() + " §7" + ((ItemStack)data).stackSize + "§7шт.";
                 case COINS:
-                    return "§7- §6" + CurrencyHandler.getGoldCurrency().getCurrencyName() + "§7x" + (int) data;
-                case RUB:
-                    return "§7- §6" + CurrencyHandler.getRubCurrency().getCurrencyName() + " §7x" + (int) data;
+                    return "§7- §" + CurrencyHandler.getGoldCurrency().getCurrencyDisplayColor() + CurrencyHandler.getGoldCurrency().getCurrencyName() + " §7" + data + " шт.";
                 case GEMS:
-                    return "§7- §6" + CurrencyHandler.getGemCurrency().getCurrencyName() + " §7x" + (int) data;
+                    return "§7- §" + CurrencyHandler.getGemCurrency().getCurrencyDisplayColor() + CurrencyHandler.getGemCurrency().getCurrencyName() + " §7" + data + " шт.";
+                case RUB:
+                    return "§7- §" + CurrencyHandler.getRubCurrency().getCurrencyDisplayColor() + CurrencyHandler.getRubCurrency().getCurrencyName() + " §7" + data + " шт.";
             }
             return "";
         }
@@ -537,6 +648,7 @@ public class RoleAdvanceTrader extends RoleInterface {
         COINS,
         GEMS,
         RUB,
+        XP,
         STACK;
 
         private static int canF(TradeSlotIn in, Inventory inventory, boolean meta, boolean nbt, boolean doit) {

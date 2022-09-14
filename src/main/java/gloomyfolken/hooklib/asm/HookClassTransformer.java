@@ -1,6 +1,6 @@
 package gloomyfolken.hooklib.asm;
 
-import com.nikita23830.metanpc.client.HookLoaderMod;
+import su.metalabs.npc.client.HookLoaderMod;
 import gloomyfolken.hooklib.asm.HookLogger.SystemOutLogger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
