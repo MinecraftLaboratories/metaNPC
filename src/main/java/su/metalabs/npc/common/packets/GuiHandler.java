@@ -21,7 +21,7 @@ public class GuiHandler implements IGuiHandler {
                 return new ContainerAdvancedTraderSetup(player.inventory, e.get(0));
             }
 
-            return new ContainerAdvancedTrader(player.inventory, e.get(0));
+            return new ContainerAdvancedTrader(player.inventory, e.get(0), true);
         }
         return null;
     }
@@ -34,7 +34,6 @@ public class GuiHandler implements IGuiHandler {
                 return new GuiAdvancedTraderSetup(player.inventory, e.get(0));
             }
 
-            new RequestFastSellPermissions().sendToServer();
             return new GuiAdvancedTrader(player.inventory, e.get(0));
         }
         return null;

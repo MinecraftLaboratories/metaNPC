@@ -29,8 +29,6 @@ import su.metalabs.lib.api.gui.utils.ScaleManager;
 import su.metalabs.lib.handlers.branding.BrandingHandler;
 import su.metalabs.lib.handlers.currency.CurrencyHandler;
 import su.metalabs.lib.handlers.data.FormatUtils;
-import su.metalabs.npc.common.packets.RequestFastSellPermissions;
-import su.metalabs.npc.proxy.ClientProxy;
 
 import java.awt.*;
 import java.util.HashMap;
@@ -59,7 +57,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
     private  static final ResourceLocation BUBBLE_BACKGROUND = new ResourceLocation(Reference.MOD_ID, "textures/gui/advanced_trader/text_bubble.png");
 
     public GuiAdvancedTrader(InventoryPlayer inventoryPlayer, EntityNPCInterface npc) {
-        super(new ContainerAdvancedTrader(inventoryPlayer, npc));
+        super(new ContainerAdvancedTrader(inventoryPlayer, npc, false));
         this.inventoryPlayer = inventoryPlayer;
         EntityCustomNpc n = new EntityCustomNpc(npc.worldObj);
         NBTTagCompound nb = new NBTTagCompound();
@@ -105,9 +103,6 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
         RenderUtils.drawRect(width / 2.0F, get(292), get(684), get(444), MetaAsset.of(Reference.MOD_ID, "textures/gui/advanced_trader/background.png"), PlaceType.CENTERED);
         RenderUtils.drawInventory(width / 2.0F, get(716), PlaceType.CENTERED);
 
-
-
-
         //Draw content
         drawTitle();
         drawFastSell();
@@ -149,7 +144,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
     public void drawFastSell() {
         float centerX = width / 2.0F + get(360) + get(360) / 2.0F;
         float startY = get(292);
-        if(ClientProxy.isFastSellAllowed) {
+        if(((ContainerAdvancedTrader)inventorySlots).getHasFastSellPermissions() == 1) {
             RenderUtils.drawRect(width / 2.0F + get(360), startY, get(360), get(265), MetaAsset.of(Reference.MOD_ID, "textures/gui/advanced_trader/unlocked_fast_sell_background.png"));
             CustomFontRenderer.drawString(FontTypes.minecraftRus, "Быстрая продажа", centerX, startY + get(52), get(24), 0xFFAA00, PlaceType.CENTERED);
             CustomFontRenderer.drawString(FontTypes.minecraftRus, "§eУстал кликать? §aПродай все", centerX, startY + get(102), get(16), 0xFFFFFF, PlaceType.CENTERED);

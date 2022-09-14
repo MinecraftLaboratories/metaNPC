@@ -167,6 +167,5 @@ public class GuiNpcAdvancedPatch extends GuiNPCInterface2 implements IGuiData {
             Client.sendData(EnumPacketServer.MainmenuAdvancedSave, this.npc.advanced.writeToNBT(new NBTTagCompound()));
             this.hasChanges = false;
         }
-
     }
 }

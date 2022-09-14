@@ -7,7 +7,7 @@ import su.metalabs.lib.handlers.injection.PermissionHandler;
 
 @UtilityClass
 public class FastSellUtils {
-    public static boolean canFastSell(EntityPlayer player) {
+    public static boolean canFastSell(EntityPlayerMP player) {
         return PermissionHandler.hasPermission(player, "oneblock.sell.all") || PermissionHandler.isOp((EntityPlayerMP) player);
     }
 }
