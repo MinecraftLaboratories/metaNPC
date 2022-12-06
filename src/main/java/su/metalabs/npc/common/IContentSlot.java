@@ -1,9 +1,9 @@
 package su.metalabs.npc.common;
 
-import com.nikita23830.metanpc.common.RoleAdvanceTrader;
+import su.metalabs.npc.common.roles.RoleAdvancedTrader;
 
 public interface IContentSlot {
-    public RoleAdvanceTrader.TradeType getType();
+    public RoleAdvancedTrader.TradeType getType();
 
     public Object getData();
 }

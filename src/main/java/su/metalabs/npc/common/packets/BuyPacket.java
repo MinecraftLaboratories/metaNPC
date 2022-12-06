@@ -1,12 +1,12 @@
 package su.metalabs.npc.common.packets;
 
-import com.nikita23830.metanpc.common.RoleAdvanceTrader;
 import hohserg.elegant.networking.api.ClientToServerPacket;
 import hohserg.elegant.networking.api.ElegantPacket;
 import lombok.Value;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.AxisAlignedBB;
 import noppes.npcs.entity.EntityNPCInterface;
+import su.metalabs.npc.common.roles.RoleAdvancedTrader;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,8 +33,8 @@ public class BuyPacket implements ClientToServerPacket {
             
             clickCd.put(player.getUniqueID(), current);
             List<EntityNPCInterface> e = player.worldObj.getEntitiesWithinAABB(EntityNPCInterface.class, AxisAlignedBB.getBoundingBox((x - 0.7D), (y - 0.7D), (z - 0.7D), (x + 0.7D), (y + 0.7D), (z + 0.7D)));
-            if (e.size() == 1 && e.get(0).roleInterface instanceof RoleAdvanceTrader) {
-                ((RoleAdvanceTrader)e.get(0).roleInterface).onTryBuy(nbt, player);
+            if (e.size() == 1 && e.get(0).roleInterface instanceof RoleAdvancedTrader) {
+                ((RoleAdvancedTrader)e.get(0).roleInterface).onTryBuy(nbt, player);
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -1,5 +1,6 @@
 package su.metalabs.npc.common.packets;
 
+import net.minecraft.entity.Entity;
 import su.metalabs.npc.client.gui.GuiAdvancedTrader;
 import su.metalabs.npc.client.gui.GuiAdvancedTraderSetup;
 import su.metalabs.npc.common.containers.ContainerAdvancedTrader;
@@ -14,25 +15,26 @@ import java.util.List;
 
 public class GuiHandler implements IGuiHandler {
     @Override
-    public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
-        List<EntityNPCInterface> e = world.getEntitiesWithinAABB(EntityNPCInterface.class, AxisAlignedBB.getBoundingBox((x - 0.7D), (y - 0.7D), (z - 0.7D), (x + 0.7D), (y + 0.7D), (z + 0.7D)));
-        if (e.size() ==  1) {
-            if (player.isSneaking() && player.capabilities.isCreativeMode) {
-                return new ContainerAdvancedTraderSetup(player.inventory, e.get(0));
-            }
+        public Object getServerGuiElement(int id, EntityPlayer player, World world, int x, int y, int z) {
+            List<EntityNPCInterface> e = world.getEntitiesWithinAABB(EntityNPCInterface.class, AxisAlignedBB.getBoundingBox((x - 0.7D), (y - 0.7D), (z - 0.7D), (x + 0.7D), (y + 0.7D), (z + 0.7D)));
+            if (e.size() ==  1) {
+                if (((Entity)player).isSneaking() && player.capabilities.isCreativeMode) {
+                    return new ContainerAdvancedTraderSetup(player.inventory, e.get(0));
+                }
 
-            return new ContainerAdvancedTrader(player.inventory, e.get(0), true);
-        }
+                return new ContainerAdvancedTrader(player.inventory, e.get(0), true);
+            }
         return null;
     }
 
     @Override
-    public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
+    public Object getClientGuiElement(int id, EntityPlayer player, World world, int x, int y, int z) {
         List<EntityNPCInterface> e = world.getEntitiesWithinAABB(EntityNPCInterface.class, AxisAlignedBB.getBoundingBox((x - 0.7D), (y - 0.7D), (z - 0.7D), (x + 0.7D), (y + 0.7D), (z + 0.7D)));
         if (e.size() ==  1) {
-            if (player.isSneaking() && player.capabilities.isCreativeMode) {
+            if (((Entity)player).isSneaking() && player.capabilities.isCreativeMode) {
                 return new GuiAdvancedTraderSetup(player.inventory, e.get(0));
             }
+
 
             return new GuiAdvancedTrader(player.inventory, e.get(0));
         }

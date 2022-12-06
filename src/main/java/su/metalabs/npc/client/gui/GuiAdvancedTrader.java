@@ -1,13 +1,7 @@
 package su.metalabs.npc.client.gui;
 
-import su.metalabs.npc.Reference;
-import su.metalabs.npc.client.RenderHelper;
-import su.metalabs.npc.common.IContentSlot;
-import com.nikita23830.metanpc.common.RoleAdvanceTrader;
-import su.metalabs.npc.common.containers.ContainerAdvancedTrader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.gui.inventory.GuiInventory;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -29,6 +23,11 @@ import su.metalabs.lib.api.gui.utils.ScaleManager;
 import su.metalabs.lib.handlers.branding.BrandingHandler;
 import su.metalabs.lib.handlers.currency.CurrencyHandler;
 import su.metalabs.lib.handlers.data.FormatUtils;
+import su.metalabs.npc.Reference;
+import su.metalabs.npc.client.RenderHelper;
+import su.metalabs.npc.common.IContentSlot;
+import su.metalabs.npc.common.containers.ContainerAdvancedTrader;
+import su.metalabs.npc.common.roles.RoleAdvancedTrader;
 
 import java.awt.*;
 import java.util.HashMap;
@@ -38,7 +37,7 @@ import static su.metalabs.lib.api.gui.utils.ScaleManager.get;
 
 public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
     private EntityNPCInterface npc;
-    private RoleAdvanceTrader role;
+    private RoleAdvancedTrader role;
 
     private long cd = 0L;
 
@@ -46,7 +45,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
     private HashMap<Integer, List<String>> cache_tooltip = new HashMap<>();
     private HashMap<Integer, String> cache_status = new HashMap<>();
 
-    private RoleAdvanceTrader.CanTradeEnum canTrade = null;
+    private RoleAdvancedTrader.CanTradeEnum canTrade = null;
 
     private int currentSlotHover = -1;
 
@@ -59,13 +58,13 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
     public GuiAdvancedTrader(InventoryPlayer inventoryPlayer, EntityNPCInterface npc) {
         super(new ContainerAdvancedTrader(inventoryPlayer, npc, false));
         this.inventoryPlayer = inventoryPlayer;
-        EntityCustomNpc n = new EntityCustomNpc(npc.worldObj);
+        EntityCustomNpc n = new EntityCustomNpc(npc.getEntityWorld());
         NBTTagCompound nb = new NBTTagCompound();
-        npc.writeToNBT(nb);
-        n.readFromNBT(nb);
+        ((Entity)npc).writeToNBT(nb);
+        ((Entity)n).readFromNBT(nb);
         this.npc = n;
         this.npc.display.showName = 2;
-        this.role = (RoleAdvanceTrader) this.npc.roleInterface;
+        this.role = (RoleAdvancedTrader) this.npc.roleInterface;
         this.check_cache = System.currentTimeMillis();
     }
 
@@ -105,23 +104,19 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
 
         //Draw content
         drawTitle();
-        drawFastSell();
+        if(role.isDrawFastSell()) {
+            drawFastSell();
+        }
         drawTextBubble();
 
         super.drawGuiContainerBackgroundLayer(ticks, mouseX, mouseY);
     }
 
     @Override
-    public void drawScreen(int mouseX, int mouseY, float ticks) {
-        super.drawScreen(mouseX, mouseY, ticks);
-        //Draw NPC
-        drawTrader(npc);
-    }
-
-    @Override
     protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
         super.drawGuiContainerForegroundLayer(mouseX, mouseY);
 
+        RenderUtils.drawNPC(npc, width / 2.0F - ScaleManager.get(680), ScaleManager.get(1197F), ScaleManager.get(401), ScaleManager.get(500), 20F,0);
 
         //Draw modal and balance
         GL11.glPushMatrix();
@@ -171,7 +166,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
         float scr = (mc.displayWidth / 1920F);
         float scy = (mc.displayHeight / 1080F);
         GL11.glPushMatrix();
-        GL11.glTranslatef(0,0,500);
+        GL11.glTranslatef(0,0,999);
         if (this.textUp != null && !this.textUp.isEmpty()) { //
             GL11.glPushMatrix();
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
@@ -207,7 +202,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
     public void drawTrades() {
         RenderUtils.drawColoredRectWidthHeight(width / 2.0F, get(317), get(634), get(394), Color.decode("#262626"), 1.0F, PlaceType.CENTERED);
 
-        if (!(npc.roleInterface instanceof RoleAdvanceTrader)) {
+        if (!(npc.roleInterface instanceof RoleAdvancedTrader)) {
             return;
         }
 
@@ -224,13 +219,13 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
         }
     }
 
-    public void drawTrade(float x, float y, RoleAdvanceTrader.TradeSlot slot, int slotId) {
+    public void drawTrade(float x, float y, RoleAdvancedTrader.TradeSlot slot, int slotId) {
         boolean isSlotValid = !((slot.getSlotIn(0) == null && slot.getSlotIn(1) == null) || (slot.getSlotOut(0) == null && slot.getSlotOut(1) == null));
         boolean isHover = isHover(x, y, get(208), get(48), 0);
 
         drawTradeBackground(x, y, isSlotValid, isHover);
 
-        String textUp = "trade.no_coins";
+        String textUp;
         if (cache_status.containsKey(slotId)) {
             textUp = cache_status.get(slotId);
         } else {
@@ -238,10 +233,10 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
             cache_status.put(slotId, textUp);
         }
 
-        RoleAdvanceTrader.CanTradeEnum canTradeLocal = RoleAdvanceTrader.CanTradeEnum.getEnumByMessage(textUp);
+        RoleAdvancedTrader.CanTradeEnum canTradeLocal = RoleAdvancedTrader.CanTradeEnum.getEnumByMessage(textUp);
         if(isSlotValid) {
             drawSlotContents(x, y, slot);
-            RenderUtils.drawRect(x + get(87), y + get(10), get(33), get(27), MetaAsset.of(Reference.MOD_ID, "textures/gui/advanced_trader/" + ((canTradeLocal == RoleAdvanceTrader.CanTradeEnum.YES) ? "arrow" : "arrow_with_cross") + ".png"), PlaceType.DEFAULT);
+            RenderUtils.drawRect(x + get(87), y + get(10), get(33), get(27), MetaAsset.of(Reference.MOD_ID, "textures/gui/advanced_trader/" + ((canTradeLocal == RoleAdvancedTrader.CanTradeEnum.YES) ? "arrow" : "arrow_with_cross") + ".png"), PlaceType.DEFAULT);
 
             if(isHover) {
                 canTrade = canTradeLocal;
@@ -257,7 +252,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
 
     }
 
-    public void renderTooltip(RoleAdvanceTrader.TradeSlot slot, int slotId) {
+    public void renderTooltip(RoleAdvancedTrader.TradeSlot slot, int slotId) {
         if(!cache_tooltip.containsKey(slotId)) {
             cache_tooltip.put(slotId, slot.genTooltip(canTrade));
         }
@@ -273,7 +268,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
         if(canTrade != null) {
             textUp = canTrade.message;
             cd = System.currentTimeMillis();
-            if (canTrade == RoleAdvanceTrader.CanTradeEnum.YES) {
+            if (canTrade == RoleAdvancedTrader.CanTradeEnum.YES) {
                 mc.thePlayer.playSound(Reference.RESOURCE_PREFIX + "a0", 0.3F, 1.0F);
                 check_cache = 0L;
                 role.onTryBuy(slotId, mc.thePlayer);
@@ -282,14 +277,14 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
             }
         }
     }
-    public void drawSlotContents(float x, float y, RoleAdvanceTrader.TradeSlot slot) {
+    public void drawSlotContents(float x, float y, RoleAdvancedTrader.TradeSlot slot) {
         //In
         if(slot.getSlotIn(0) != null && slot.getSlotIn(1) != null) {
             for(int i = 0; i < 2; i++) {
                 drawSlotInt(x + get(9) + get(36) * i, y + get(6), slot.getSlotIn(i));
             }
         } else if(slot.getSlotIn(0) != null || slot.getSlotIn(1) != null) {
-            RoleAdvanceTrader.TradeSlotIn slotIn =  slot.getSlotIn(slot.getSlotIn(0) != null ? 0 : 1);
+            RoleAdvancedTrader.TradeSlotIn slotIn =  slot.getSlotIn(slot.getSlotIn(0) != null ? 0 : 1);
             drawSlotInt(x + get(29), y + get(6), slotIn);
         }
 
@@ -299,7 +294,7 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
                 drawSlotInt(x + get(127) + get(36) * i, y + get(6), slot.getSlotOut(i));
             }
         } else if(slot.getSlotOut(0) != null || slot.getSlotOut(1) != null) {
-            RoleAdvanceTrader.TradeSlotOut slotOut =  slot.getSlotOut(slot.getSlotOut(0) != null ? 0 : 1);
+            RoleAdvancedTrader.TradeSlotOut slotOut =  slot.getSlotOut(slot.getSlotOut(0) != null ? 0 : 1);
             drawSlotInt(x + get(142), y + get(6), slotOut);
         }
     }
@@ -310,7 +305,14 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
         GL11.glTranslatef(x, y, 0);
         switch (slot.getType()){
             case STACK: {
-                RenderHelper.renderItemStackIntoGUI((ItemStack) slot.getData(), 0, 0, RenderUtils.itemRender, ScaleManager.get(36.0F) / 16.0F, 1);
+                float scale = ScaleManager.get(36.0F) / 16.0F;
+                ItemStack is = (ItemStack) slot.getData();
+                GL11.glPushMatrix();
+                drawGuiItem(is, 0.0F, 0.0F, scale);
+                GL11.glScalef(scale, scale, scale);
+                this.getItemRender().renderItemOverlayIntoGUI(this.getFontRenderer(), this.mc.getTextureManager(), is, 0, 0, is.stackSize > 1 ? String.valueOf(is.stackSize) : "");
+                net.minecraft.client.renderer.RenderHelper.disableStandardItemLighting();
+                GL11.glPopMatrix();
                 break;
             }
             case COINS: {
@@ -391,21 +393,5 @@ public class GuiAdvancedTrader extends GuiContainerMeta implements IGuiData {
     @Override
     public void setGuiData(NBTTagCompound compound) {
         this.npc.roleInterface.readFromNBT(compound);
-    }
-
-    public static void drawTrader(EntityNPCInterface entity) {
-        GL11.glPushMatrix();
-        ScaledResolution sr = new ScaledResolution(Minecraft.getMinecraft(), Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight);
-        GL11.glScalef((1F / sr.getScaleFactor()), (1F / sr.getScaleFactor()), 1);
-        GL11.glScalef((1F * sr.getScaleFactor()), (1F * sr.getScaleFactor()), 1F);
-        ScaleManager.update();
-        RenderHelper.drawGradientRect(0, 0, -500, Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight, new Color(0x5F000000, true).getRGB(), new Color(0x5F000000, true).getRGB());
-        RenderHelper.drawGradientRect(0, ScaleManager.get(199), -500, Minecraft.getMinecraft().displayWidth, ScaleManager.get(199 + 630), new Color(0xA8000000, true).getRGB(), new Color(0xA8000000, true).getRGB());
-        GL11.glPushMatrix();
-        GL11.glTranslatef(ScaleManager.get(350F), ScaleManager.get(1197F), 401);
-        GL11.glRotatef(20F, 0F, 1F, 0F);
-        GuiInventory.func_147046_a(0, 0, (int) ScaleManager.get(500), -30, -1, entity);
-        GL11.glPopMatrix();
-        GL11.glPopMatrix();
     }
 }

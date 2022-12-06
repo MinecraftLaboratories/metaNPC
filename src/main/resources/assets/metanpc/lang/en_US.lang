@@ -1,2 +1,9 @@
 trade.no_stack=§4Не хватает ресурсов §8для;§8этой покупки
 group500.name=Grand
+itemGroup.currencyTab=Валюты для настройки NPC
+item.currency_rub.name=Предмет для настройки валюты: RUB
+item.currency_gem.name=Предмет для настройки валюты: GEM
+item.currency_gold.name=Предмет для настройки валюты: GOLD
+trade.no_gems.name=§4Не хватает валюты §8для;§8этой покупки
+trade.no_rub.name=§4Не хватает валюты §8для;§8этой покупки
+trade.no_gold.name=§4Не хватает валюты §8для;§8этой покупки

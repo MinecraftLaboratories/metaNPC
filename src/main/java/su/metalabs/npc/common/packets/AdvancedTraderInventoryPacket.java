@@ -1,5 +1,7 @@
 package su.metalabs.npc.common.packets;
 
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import hohserg.elegant.networking.api.ElegantPacket;
 import hohserg.elegant.networking.api.ServerToClientPacket;
 import lombok.Value;
@@ -12,6 +14,7 @@ import su.metalabs.npc.client.gui.GuiAdvancedTraderSetup;
 public class AdvancedTraderInventoryPacket implements ServerToClientPacket {
     NBTTagCompound nbt;
 
+    @SideOnly(Side.CLIENT)
     @Override
     public void onReceive(Minecraft minecraft) {
         try {
